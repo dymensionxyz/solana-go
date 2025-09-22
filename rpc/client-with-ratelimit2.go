@@ -36,6 +36,26 @@ func NewWithLimiter(
 	}
 }
 
+func NewWithLimiterWithCustomHeaders(
+	rpcEndpoint string,
+	every rate.Limit, // time frame
+	b int, // number of requests per time frame
+	headers map[string]string,
+) JSONRPCClient {
+	opts := &jsonrpc.RPCClientOpts{
+		HTTPClient:    newHTTP(),
+		CustomHeaders: headers,
+	}
+
+	rpcClient := jsonrpc.NewClientWithOpts(rpcEndpoint, opts)
+	rater := rate.NewLimiter(every, b)
+
+	return &clientWithLimiter{
+		rpcClient: rpcClient,
+		limiter:   rater,
+	}
+}
+
 func (wr *clientWithLimiter) CallForInto(ctx context.Context, out interface{}, method string, params []interface{}) error {
 	err := wr.limiter.Wait(ctx)
 	if err != nil {
